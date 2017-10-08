@@ -43,14 +43,14 @@ class GameCtrl : JPanel(), ActionListener {
 
         g.fillRect(0, 0, panelWidth, panelHeight)
 
-        val top = panelHeight - nRows * squareHeight()
+        val top = panelHeight - nRows * brickHeight()
 
 
         for (i in 0 until nRows) {
             for (j in 0 until nColumns) {
-                val shape = shapeAt(j, nRows - i - 1)
+                val shape = resolvePiece(j, nRows - i - 1)
                 if (shape !is NoShape) {
-                    shape.renderStatic(g, j * squareWidth(), top + i * squareHeight())
+                    shape.renderStatic(g, j * brickWidth(), top + i * brickHeight())
                 }
             }
         }
@@ -62,8 +62,8 @@ class GameCtrl : JPanel(), ActionListener {
         g.dispose()
     }
 
-    private fun squareWidth() = panelWidth / nColumns
-    private fun squareHeight() = panelHeight / nRows
+    private fun brickWidth() = panelWidth / nColumns
+    private fun brickHeight() = panelHeight / nRows
 
     private fun start() {
         newPiece()
@@ -99,13 +99,13 @@ class GameCtrl : JPanel(), ActionListener {
 
         for (i in nRows - 1 downTo 0) {
 
-            val lineIsFull = (0 until nColumns).none { shapeAt(it, i) is NoShape }
+            val lineIsFull = (0 until nColumns).none { resolvePiece(it, i) is NoShape }
 
             if (lineIsFull) {
                 ++numFullLines
                 for (k in i until nRows - 1) {
                     for (j in 0 until nColumns)
-                        board[k * nColumns + j] = shapeAt(j, k + 1)
+                        board[k * nColumns + j] = resolvePiece(j, k + 1)
                 }
             }
         }
@@ -121,11 +121,11 @@ class GameCtrl : JPanel(), ActionListener {
     private fun newPiece() {
         xCurrent = nColumns / 2 - 1
         yCurrent = nRows - 1 + currentPiece.top()
-        currentPiece = Tetrominoe.randomPiece(squareWidth(), squareHeight())
+        currentPiece = Tetrominoe.randomPiece(brickWidth(), brickHeight())
         isDoneFalling = false
     }
 
-    private fun shapeAt(row: Int, col: Int) = board[(col * nColumns) + row]
+    private fun resolvePiece(row: Int, col: Int) = board[(col * nColumns) + row]
 
     private fun mayAdvance(piece: Tetrominoe, xNew: Int, yNew: Int): Boolean {
 
@@ -136,7 +136,7 @@ class GameCtrl : JPanel(), ActionListener {
 
             if (x < 0 || x >= nColumns || y < 0 || y >= nRows)
                 return false
-            if (shapeAt(x, y) !is NoShape)
+            if (resolvePiece(x, y) !is NoShape)
                 return false
         }
 
