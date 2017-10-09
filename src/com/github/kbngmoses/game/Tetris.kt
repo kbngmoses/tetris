@@ -1,12 +1,16 @@
-package com.github.kbngmoses.game.tetominoe
+package com.github.kbngmoses.game
 
-import com.github.kbngmoses.game.GameCtrl
+import java.awt.BorderLayout
 import java.awt.Dimension
 import javax.swing.JFrame
 
 class Tetris : JFrame() {
+
     init {
-        add(GameCtrl())
+
+        val statusPanel = StatusPanel()
+        add(statusPanel, BorderLayout.EAST)
+        add(GameCtrl(statusPanel))
         size = Dimension(700, 700)
         // isResizable = false
         title = "Tetris"

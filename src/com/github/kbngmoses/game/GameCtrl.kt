@@ -11,18 +11,19 @@ import javax.swing.JPanel
 import javax.swing.Timer
 
 
-class GameCtrl : JPanel(), ActionListener {
+class GameCtrl(onScoreChangeListener: OnScoreChangeListener) : JPanel(), ActionListener {
 
-    var board: Array<Tetrominoe> = Array(nColumns * nRows, { NoShape() })
-    var currentPiece: Tetrominoe = board[0]
-    var isDoneFalling = false
+    var mPieces: Array<Tetrominoe> = Array(nColumns * nRows, { NoShape() })
+    var mFallingPiece: Tetrominoe = mPieces[0]
+    var doneFalling = false
 
-    private val timer = Timer(REPAINT_INTERVAL, this)
+    private val mTimer = Timer(REPAINT_INTERVAL, this)
+    private val mOnScoreChangeListener = onScoreChangeListener
 
-    private var score = 0
+    private var mScore = 0
 
-    var xCurrent = 0
-    var yCurrent = 0
+    var mXCurr = 0
+    var mYCurr = 0
 
     init {
         addKeyListener(KeyPressHandler())
@@ -31,7 +32,7 @@ class GameCtrl : JPanel(), ActionListener {
     }
 
     override fun actionPerformed(e: ActionEvent) {
-        if (isDoneFalling) {
+        if (doneFalling) {
             newPiece()
         } else {
             autoMove()
@@ -55,8 +56,8 @@ class GameCtrl : JPanel(), ActionListener {
             }
         }
 
-        if (currentPiece !is NoShape) {
-            currentPiece.renderMove(g, xCurrent, yCurrent, top)
+        if (mFallingPiece !is NoShape) {
+            mFallingPiece.renderMove(g, mXCurr, mYCurr, top)
         }
 
         g.dispose()
@@ -67,12 +68,12 @@ class GameCtrl : JPanel(), ActionListener {
 
     private fun start() {
         newPiece()
-        score = 0
-        timer.start()
+        mScore = 0
+        mTimer.start()
     }
 
     private fun autoMove() {
-        if (!mayAdvance(currentPiece, xCurrent, yCurrent - 1))
+        if (!mayAdvance(mFallingPiece, mXCurr, mYCurr - 1))
             stackToBottom()
         repaint()
     }
@@ -80,16 +81,16 @@ class GameCtrl : JPanel(), ActionListener {
     private fun stackToBottom() {
 
         for (i in 0..3) {
-            val brick = currentPiece.brickAt(i)
-            val x = xCurrent + brick.x
-            val y = yCurrent - brick.y
+            val brick = mFallingPiece.brickAt(i)
+            val x = mXCurr + brick.x
+            val y = mYCurr - brick.y
 
-            board[y * nColumns + x] = currentPiece
+            mPieces[y * nColumns + x] = mFallingPiece
         }
 
         computeScore()
 
-        if (!isDoneFalling)
+        if (!doneFalling)
             newPiece()
     }
 
@@ -105,27 +106,29 @@ class GameCtrl : JPanel(), ActionListener {
                 ++numFullLines
                 for (k in i until nRows - 1) {
                     for (j in 0 until nColumns)
-                        board[k * nColumns + j] = resolvePiece(j, k + 1)
+                        mPieces[k * nColumns + j] = resolvePiece(j, k + 1)
                 }
             }
         }
 
         if (numFullLines > 0) {
-            score += numFullLines
-            isDoneFalling = true
-            currentPiece = NoShape()
+            val oldScore = mScore
+            mScore += numFullLines
+            mOnScoreChangeListener.onScoreChanged(oldScore, mScore)
+            doneFalling = true
+            mFallingPiece = NoShape()
             repaint()
         }
     }
 
     private fun newPiece() {
-        xCurrent = nColumns / 2 - 1
-        yCurrent = nRows - 1 + currentPiece.top()
-        currentPiece = Tetrominoe.randomPiece(brickWidth(), brickHeight())
-        isDoneFalling = false
+        mXCurr = nColumns / 2 - 1
+        mYCurr = nRows - 1 + mFallingPiece.top()
+        mFallingPiece = Tetrominoe.randomPiece(brickWidth(), brickHeight())
+        doneFalling = false
     }
 
-    private fun resolvePiece(row: Int, col: Int) = board[(col * nColumns) + row]
+    private fun resolvePiece(row: Int, col: Int) = mPieces[(col * nColumns) + row]
 
     private fun mayAdvance(piece: Tetrominoe, xNew: Int, yNew: Int): Boolean {
 
@@ -140,9 +143,9 @@ class GameCtrl : JPanel(), ActionListener {
                 return false
         }
 
-        currentPiece = piece
-        xCurrent = xNew
-        yCurrent = yNew
+        mFallingPiece = piece
+        mXCurr = xNew
+        mYCurr = yNew
         repaint()
         return true
     }
@@ -150,17 +153,21 @@ class GameCtrl : JPanel(), ActionListener {
     inner class KeyPressHandler : KeyAdapter() {
         override fun keyPressed(e: KeyEvent) {
 
-            if (currentPiece is NoShape)
+            if (mFallingPiece is NoShape)
                 return
 
             when (e.keyCode) {
-                KeyEvent.VK_LEFT -> mayAdvance(currentPiece, xCurrent - 1, yCurrent)
-                KeyEvent.VK_RIGHT -> mayAdvance(currentPiece, xCurrent + 1, yCurrent)
-                KeyEvent.VK_UP -> mayAdvance(currentPiece.rotateLeft(), xCurrent, yCurrent)
-                KeyEvent.VK_DOWN -> mayAdvance(currentPiece.rotateRight(), xCurrent, yCurrent)
+                KeyEvent.VK_LEFT -> mayAdvance(mFallingPiece, mXCurr - 1, mYCurr)
+                KeyEvent.VK_RIGHT -> mayAdvance(mFallingPiece, mXCurr + 1, mYCurr)
+                KeyEvent.VK_UP -> mayAdvance(mFallingPiece.rotateLeft(), mXCurr, mYCurr)
+                KeyEvent.VK_DOWN -> mayAdvance(mFallingPiece.rotateRight(), mXCurr, mYCurr)
                 else -> println("Unhandled input")
             }
         }
+    }
+
+    interface OnScoreChangeListener {
+        fun onScoreChanged(oldScore: Int, currentScore: Int)
     }
 
     companion object {
