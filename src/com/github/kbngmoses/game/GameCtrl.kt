@@ -1,5 +1,6 @@
 package com.github.kbngmoses.game
 
+import com.github.kbngmoses.game.sound.SoundManager
 import com.github.kbngmoses.game.tetominoe.NoShape
 import com.github.kbngmoses.game.tetominoe.Tetrominoe
 import java.awt.Graphics
@@ -70,12 +71,17 @@ class GameCtrl(onScoreChangeListener: OnScoreChangeListener) : JPanel(), ActionL
         newPiece()
         mScore = 0
         mTimer.start()
+        gameStartSound.play(false)
     }
 
     private fun autoMove() {
-        if (!mayAdvance(mFallingPiece, mXCurr, mYCurr - 1))
+        if (!mayAdvance(mFallingPiece, mXCurr, mYCurr - 1)) {
             stackToBottom()
-        repaint()
+            repaint()
+            pieceFalling.play(false)
+        } else {
+            repaint()
+        }
     }
 
     private fun stackToBottom() {
@@ -90,8 +96,9 @@ class GameCtrl(onScoreChangeListener: OnScoreChangeListener) : JPanel(), ActionL
 
         computeScore()
 
-        if (!doneFalling)
+        if (!doneFalling) {
             newPiece()
+        }
     }
 
     private fun computeScore() {
@@ -117,6 +124,15 @@ class GameCtrl(onScoreChangeListener: OnScoreChangeListener) : JPanel(), ActionL
             mOnScoreChangeListener.onScoreChanged(oldScore, mScore)
             doneFalling = true
             mFallingPiece = NoShape()
+
+            if (numFullLines == 1) {
+                lineRemovedSound.play(false)
+            } else if (numFullLines <= 3) {
+                lineRemoved4Sound.play(false)
+            } else {
+                wonderfulVoice.play(false)
+            }
+
             repaint()
         }
     }
@@ -151,18 +167,53 @@ class GameCtrl(onScoreChangeListener: OnScoreChangeListener) : JPanel(), ActionL
     }
 
     inner class KeyPressHandler : KeyAdapter() {
+
+        private fun advanceLeft() {
+            if (mayAdvance(mFallingPiece, mXCurr - 1, mYCurr)) {
+                buttonLRSound.play(false)
+            }
+        }
+
+        private fun advanceRight() {
+            if (mayAdvance(mFallingPiece, mXCurr + 1, mYCurr)) {
+                buttonLRSound.play(false)
+            }
+        }
+
+        private fun rotateRight() {
+            if (mayAdvance(mFallingPiece.rotateRight(), mXCurr, mYCurr)) {
+                pieceRotate.play(false)
+            } else {
+                pieceRotateFail.play(false)
+            }
+        }
+
+        private fun rotateLeft() {
+            if (mayAdvance(mFallingPiece.rotateLeft(), mXCurr, mYCurr)) {
+                pieceRotate.play(false)
+            } else {
+                pieceRotateFail.play(false)
+            }
+        }
+
+        override fun keyReleased(e: KeyEvent?) {
+            buttonUpSound.play(false)
+        }
+
         override fun keyPressed(e: KeyEvent) {
 
             if (mFallingPiece is NoShape)
                 return
 
             when (e.keyCode) {
-                KeyEvent.VK_LEFT -> mayAdvance(mFallingPiece, mXCurr - 1, mYCurr)
-                KeyEvent.VK_RIGHT -> mayAdvance(mFallingPiece, mXCurr + 1, mYCurr)
-                KeyEvent.VK_UP -> mayAdvance(mFallingPiece.rotateLeft(), mXCurr, mYCurr)
-                KeyEvent.VK_DOWN -> mayAdvance(mFallingPiece.rotateRight(), mXCurr, mYCurr)
+                KeyEvent.VK_LEFT  -> { advanceLeft() }
+                KeyEvent.VK_RIGHT -> { advanceRight() }
+                KeyEvent.VK_UP    -> { rotateLeft() }
+                KeyEvent.VK_DOWN  -> { rotateRight() }
                 else -> println("Unhandled input")
             }
+
+            buttonUpSound.play(false)
         }
     }
 
@@ -179,5 +230,15 @@ class GameCtrl(onScoreChangeListener: OnScoreChangeListener) : JPanel(), ActionL
         val panelHeight = 700
 
         val REPAINT_INTERVAL = 150
+
+        val gameStartSound = SoundManager.GameStart()
+        val buttonUpSound = SoundManager.ButtonUp()
+        val buttonLRSound = SoundManager.ButtonLR()
+        val pieceFalling  = SoundManager.PieceDown()
+        val pieceRotate   = SoundManager.PieceRotate()
+        val lineRemoved4Sound = SoundManager.LineRemoval4()
+        val lineRemovedSound  = SoundManager.LineRemoval()
+        val pieceRotateFail   = SoundManager.PieceRotateFail()
+        val wonderfulVoice    = SoundManager.WonderfulVoice()
     }
 }
