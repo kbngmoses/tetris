@@ -25,12 +25,7 @@ class StatusPanel : JPanel(), GameCtrl.OnScoreChangeListener {
     }
 
     private fun setFonts() {
-        var font = Font.createFont(Font.TRUETYPE_FONT,
-                File(".${File.separator}resource${File.separator}font${File.separator}neuropolregular.ttf"))
-        font = font.deriveFont(Font.BOLD, 24.0f)
-        val ge = GraphicsEnvironment.getLocalGraphicsEnvironment()
-        ge.registerFont(font)
-        mScoreTextLabel.font = font
+        mScoreTextLabel.font = Tetris.font()
     }
 
     init {

@@ -3,6 +3,7 @@ package com.github.kbngmoses.game
 import com.github.kbngmoses.game.sound.SoundManager
 import com.github.kbngmoses.game.tetominoe.NoShape
 import com.github.kbngmoses.game.tetominoe.Tetrominoe
+import java.awt.Color
 import java.awt.Graphics
 import java.awt.event.ActionEvent
 import java.awt.event.ActionListener
@@ -10,6 +11,9 @@ import java.awt.event.KeyAdapter
 import java.awt.event.KeyEvent
 import javax.swing.JPanel
 import javax.swing.Timer
+import java.awt.Graphics2D
+
+
 
 
 class GameCtrl(onScoreChangeListener: OnScoreChangeListener) : JPanel(), ActionListener {
@@ -20,6 +24,8 @@ class GameCtrl(onScoreChangeListener: OnScoreChangeListener) : JPanel(), ActionL
 
     private val mTimer = Timer(REPAINT_INTERVAL, this)
     private val mOnScoreChangeListener = onScoreChangeListener
+    private var paused = false
+    private var playing = false
 
     private var mScore = 0
 
@@ -33,10 +39,12 @@ class GameCtrl(onScoreChangeListener: OnScoreChangeListener) : JPanel(), ActionL
     }
 
     override fun actionPerformed(e: ActionEvent) {
-        if (doneFalling) {
-            newPiece()
-        } else {
-            autoMove()
+        if (playing) {
+            if (doneFalling) {
+                newPiece()
+            } else {
+                autoMove()
+            }
         }
     }
 
@@ -46,7 +54,6 @@ class GameCtrl(onScoreChangeListener: OnScoreChangeListener) : JPanel(), ActionL
         g.fillRect(0, 0, panelWidth, panelHeight)
 
         val top = panelHeight - nRows * brickHeight()
-
 
         for (i in 0 until nRows) {
             for (j in 0 until nColumns) {
@@ -61,6 +68,17 @@ class GameCtrl(onScoreChangeListener: OnScoreChangeListener) : JPanel(), ActionL
             mFallingPiece.renderMove(g, mXCurr, mYCurr, top)
         }
 
+        // render text in front of everything
+        if (paused) {
+            val fm = g.fontMetrics
+            val r = fm.getStringBounds(TEXT_PAUSED, g)
+            val x = (panelWidth - (r.width).toInt()) / 2
+            val y = (panelHeight - (r.height).toInt()) / 2 + fm.ascent
+            g.color = Color.YELLOW
+            g.font  = Tetris.font()
+            g.drawString(TEXT_PAUSED, x, y)
+        }
+
         g.dispose()
     }
 
@@ -68,10 +86,23 @@ class GameCtrl(onScoreChangeListener: OnScoreChangeListener) : JPanel(), ActionL
     private fun brickHeight() = panelHeight / nRows
 
     private fun start() {
-        newPiece()
-        mScore = 0
         mTimer.start()
-        gameStartSound.play(false)
+
+        if (!paused) {
+            mScore = 0
+            gameStartSound.play(false)
+            newPiece()
+        }
+
+        paused = false
+        playing = true
+    }
+
+    private fun pause() {
+        mTimer.stop()
+        paused = true
+        playing = false
+        repaint()
     }
 
     private fun autoMove() {
@@ -196,6 +227,14 @@ class GameCtrl(onScoreChangeListener: OnScoreChangeListener) : JPanel(), ActionL
             }
         }
 
+        private fun togglePlayPause() {
+            if (playing) {
+                pause()
+            } else {
+                start()
+            }
+        }
+
         override fun keyReleased(e: KeyEvent?) {
             buttonUpSound.play(false)
         }
@@ -210,6 +249,7 @@ class GameCtrl(onScoreChangeListener: OnScoreChangeListener) : JPanel(), ActionL
                 KeyEvent.VK_RIGHT -> { advanceRight() }
                 KeyEvent.VK_UP    -> { rotateLeft() }
                 KeyEvent.VK_DOWN  -> { rotateRight() }
+                KeyEvent.VK_P     -> { togglePlayPause() }
                 else -> println("Unhandled input")
             }
 
@@ -230,6 +270,9 @@ class GameCtrl(onScoreChangeListener: OnScoreChangeListener) : JPanel(), ActionL
         val panelHeight = 700
 
         val REPAINT_INTERVAL = 150
+
+        // TODO: translate this text (internationalization feature)
+        val TEXT_PAUSED = "PAUSED"
 
         val gameStartSound = SoundManager.GameStart()
         val buttonUpSound = SoundManager.ButtonUp()
