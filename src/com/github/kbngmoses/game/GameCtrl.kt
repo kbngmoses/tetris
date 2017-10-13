@@ -70,12 +70,12 @@ class GameCtrl(onScoreChangeListener: OnScoreChangeListener) : JPanel(), ActionL
 
         // render text in front of everything
         if (paused) {
+            g.font  = Tetris.font()
             val fm = g.fontMetrics
             val r = fm.getStringBounds(TEXT_PAUSED, g)
             val x = (panelWidth - (r.width).toInt()) / 2
             val y = (panelHeight - (r.height).toInt()) / 2 + fm.ascent
             g.color = Color.YELLOW
-            g.font  = Tetris.font()
             g.drawString(TEXT_PAUSED, x, y)
         }
 
