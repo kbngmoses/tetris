@@ -5,18 +5,13 @@ import com.github.kbngmoses.game.tetominoe.NoShape
 import com.github.kbngmoses.game.tetominoe.Tetrominoe
 import java.awt.Color
 import java.awt.Graphics
-import java.awt.event.ActionEvent
-import java.awt.event.ActionListener
-import java.awt.event.KeyAdapter
-import java.awt.event.KeyEvent
+import java.awt.event.*
 import javax.swing.JPanel
 import javax.swing.Timer
-import java.awt.Graphics2D
 
 
-
-
-class GameCtrl(onScoreChangeListener: OnScoreChangeListener) : JPanel(), ActionListener {
+class GameCtrl(onScoreChangeListener: OnScoreChangeListener) : JPanel(),
+    ActionListener, FocusListener {
 
     var mPieces: Array<Tetrominoe> = Array(nColumns * nRows, { NoShape() })
     var mFallingPiece: Tetrominoe = mPieces[0]
@@ -34,6 +29,7 @@ class GameCtrl(onScoreChangeListener: OnScoreChangeListener) : JPanel(), ActionL
 
     init {
         addKeyListener(KeyPressHandler())
+        addFocusListener(this)
         isFocusable = true
         start()
     }
@@ -46,6 +42,14 @@ class GameCtrl(onScoreChangeListener: OnScoreChangeListener) : JPanel(), ActionL
                 autoMove()
             }
         }
+    }
+
+    override fun focusLost(e: FocusEvent) {
+        pause()
+    }
+
+    override fun focusGained(e: FocusEvent) {
+        start()
     }
 
     override fun paint(g: Graphics) {
