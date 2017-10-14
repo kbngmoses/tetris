@@ -1,4 +1,4 @@
-package com.github.kbngmoses.game.tetominoe
+package com.github.kbngmoses.game.tetrominoe
 
 import com.github.kbngmoses.game.GameCtrl
 import java.awt.Color
@@ -7,7 +7,7 @@ import java.util.*
 
 interface Tetrominoe {
 
-    val bricks: Array<Brick>
+    var bricks: Array<Brick>
 
     fun top() = bricks.minBy { it -> it.y }!!.y
 
@@ -27,18 +27,6 @@ interface Tetrominoe {
         (0 until 4).forEach { i -> bricks[i].render(g, x, y) }
     }
 
-    fun rotateLeft(): Tetrominoe {
-        if (this !is OShape)
-            bricks.forEach { brick -> brick.rotateLeft() }
-        return this
-    }
-
-    fun rotateRight(): Tetrominoe {
-        if (this !is OShape)
-            bricks.forEach { brick -> brick.rotateRight()  }
-        return this
-    }
-
     companion object {
 
         private val colors = arrayOf(Color(215,215,105),
@@ -49,9 +37,41 @@ interface Tetrominoe {
                 Color(215,105,105),
                 Color(233,129,87))
 
-        fun randomPiece(width: Int, height: Int): Tetrominoe {
+        fun rotateLeft(piece: Tetrominoe): Tetrominoe {
+            if (piece is OShape)
+                return piece
+            val newPiece = Tetrominoe.new(piece)
+            newPiece.bricks = piece.bricks.map { brick -> Brick(brick).rotateLeft() }.toTypedArray()
+            return newPiece
+        }
+
+        fun rotateRight(piece: Tetrominoe): Tetrominoe {
+            if (piece is OShape)
+                return piece
+            val newPiece = Tetrominoe.new(piece)
+            newPiece.bricks = piece.bricks.map { brick -> Brick(brick).rotateRight() }.toTypedArray()
+            return newPiece
+        }
+
+        private fun new(tetrominoe: Tetrominoe): Tetrominoe {
+            val width = GameCtrl.brickWidth
+            val height = GameCtrl.brickHeight
+            return when (tetrominoe) {
+                is ZShape -> ZShape(width, height, colors[0])
+                is OShape -> OShape(width, height, colors[1])
+                is TShape -> TShape(width, height, colors[3])
+                is IShape -> IShape(width, height, colors[2])
+                is LShape -> LShape(width, height, colors[4])
+                is JShape -> JShape(width, height, colors[5])
+                else -> SShape(width, height, colors[6])
+            }
+        }
+
+        fun randomPiece(): Tetrominoe {
             val int = (Math.abs(Random().nextInt()) % 7)
             val color = colors[int]
+            val width = GameCtrl.brickWidth
+            val height = GameCtrl.brickHeight
             return when (int + 1) {
                 1 -> ZShape(width, height, color)
                 2 -> OShape(width, height, color)

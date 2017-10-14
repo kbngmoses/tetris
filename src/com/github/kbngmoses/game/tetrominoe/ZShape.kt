@@ -1,11 +1,10 @@
-package com.github.kbngmoses.game.tetominoe
+package com.github.kbngmoses.game.tetrominoe
 
 import java.awt.Color
 
-class ZShape(private val width: Int,
-    private val height: Int, private val color: Color) : Tetrominoe {
+class ZShape(val width: Int, val height: Int, val color: Color) : Tetrominoe {
 
-    override val bricks: Array<Brick>
+    override var bricks: Array<Brick>
             = arrayOf(
             Brick(0, 0, width, height, color),
             Brick(-1, 0, width, height,  color),

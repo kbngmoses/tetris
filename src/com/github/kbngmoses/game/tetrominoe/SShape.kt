@@ -1,8 +1,8 @@
-package com.github.kbngmoses.game.tetominoe
+package com.github.kbngmoses.game.tetrominoe
 
 import java.awt.Color
 
-class SShape(width: Int, height: Int, color: Color) : Tetrominoe {
+class SShape(val width: Int, val height: Int, val color: Color) : Tetrominoe {
 
 
     override var bricks: Array<Brick>

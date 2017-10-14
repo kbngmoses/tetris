@@ -1,11 +1,13 @@
 package com.github.kbngmoses.game
 
 import com.github.kbngmoses.game.sound.SoundManager
-import com.github.kbngmoses.game.tetominoe.NoShape
-import com.github.kbngmoses.game.tetominoe.Tetrominoe
+import com.github.kbngmoses.game.tetrominoe.NoShape
+import com.github.kbngmoses.game.tetrominoe.OShape
+import com.github.kbngmoses.game.tetrominoe.Tetrominoe
 import java.awt.Color
 import java.awt.Graphics
 import java.awt.event.*
+import java.util.*
 import javax.swing.JPanel
 import javax.swing.Timer
 
@@ -57,20 +59,22 @@ class GameCtrl(onScoreChangeListener: OnScoreChangeListener) : JPanel(),
 
         g.fillRect(0, 0, panelWidth, panelHeight)
 
-        val top = panelHeight - nRows * brickHeight()
+        val top = panelHeight - nRows * brickHeight
 
-        for (i in 0 until nRows) {
-            for (j in 0 until nColumns) {
-                val shape = resolvePiece(j, nRows - i - 1)
-                if (shape !is NoShape) {
-                    shape.renderStatic(g, j * brickWidth(), top + i * brickHeight())
+        (0 until nRows).flatMap { i ->
+            (0 until nColumns).map { j ->
+                    val piece = resolvePiece(j, nRows - i - 1)
+                    PiecePosition(piece, j * brickWidth, top + i * brickHeight)}}
+                .filterNot { it -> it.piece is NoShape }
+                .forEach { piecePosition ->
+                    piecePosition.piece.renderStatic(g, piecePosition.xPos, piecePosition.yPos) }
+
+
+        Optional.of(mFallingPiece)
+                .filter{piece -> piece !is NoShape}
+                .ifPresent {
+                    mFallingPiece.renderMove(g, mXCurr, mYCurr, top)
                 }
-            }
-        }
-
-        if (mFallingPiece !is NoShape) {
-            mFallingPiece.renderMove(g, mXCurr, mYCurr, top)
-        }
 
         // render text in front of everything
         if (paused) {
@@ -85,9 +89,6 @@ class GameCtrl(onScoreChangeListener: OnScoreChangeListener) : JPanel(),
 
         g.dispose()
     }
-
-    private fun brickWidth() = panelWidth / nColumns
-    private fun brickHeight() = panelHeight / nRows
 
     private fun start() {
         mTimer.start()
@@ -110,113 +111,126 @@ class GameCtrl(onScoreChangeListener: OnScoreChangeListener) : JPanel(),
     }
 
     private fun autoMove() {
-        if (!mayAdvance(mFallingPiece, mXCurr, mYCurr - 1)) {
+        Optional.of(mFallingPiece).filter { piece ->
+            !tryPosition(piece, mXCurr, mYCurr - 1)
+        }.ifPresent {
             stackToBottom()
             repaint()
             pieceFalling.play(false)
-        } else {
-            repaint()
         }
     }
 
     private fun stackToBottom() {
 
-        for (i in 0..3) {
-            val brick = mFallingPiece.brickAt(i)
+        mFallingPiece.bricks .forEach { brick ->
             val x = mXCurr + brick.x
             val y = mYCurr - brick.y
-
             mPieces[y * nColumns + x] = mFallingPiece
         }
 
         computeScore()
 
-        if (!doneFalling) {
-            newPiece()
+        // TODO: Check if it's not game over
+        newPiece()
+    }
+
+    private fun isFullRow(row: Int): Boolean =
+        (0 until nColumns).none{ col -> resolvePiece(col, row) is NoShape}
+
+
+    private fun clearRow(row: Int) {
+        (0 until nColumns).forEach { col ->
+            mPieces[row * nColumns + col] = resolvePiece(col, row + 1)
         }
     }
 
-    private fun computeScore() {
-
-        var numFullLines = 0
-
-        for (i in nRows - 1 downTo 0) {
-
-            val lineIsFull = (0 until nColumns).none { resolvePiece(it, i) is NoShape }
-
-            if (lineIsFull) {
-                ++numFullLines
-                for (k in i until nRows - 1) {
-                    for (j in 0 until nColumns)
-                        mPieces[k * nColumns + j] = resolvePiece(j, k + 1)
-                }
-            }
+    private fun clearRowsBelow(maxRow: Int) {
+        (maxRow until nRows - 1).forEach { row ->
+            clearRow(row)
         }
+    }
 
-        if (numFullLines > 0) {
-            val oldScore = mScore
-            mScore += numFullLines
-            mOnScoreChangeListener.onScoreChanged(oldScore, mScore)
-            doneFalling = true
-            mFallingPiece = NoShape()
+    private fun updateScore(numFullLines: Int) {
+        val oldScore = mScore
+        mScore += numFullLines
+        doneFalling = true
+        mFallingPiece = NoShape()
+        mOnScoreChangeListener.onScoreChanged(oldScore, mScore)
+        repaint()
+    }
 
-            if (numFullLines == 1) {
-                lineRemovedSound.play(false)
-            } else if (numFullLines <= 3) {
-                lineRemoved4Sound.play(false)
-            } else {
-                wonderfulVoice.play(false)
-            }
-
-            repaint()
+    private fun computeScore() {
+        // determine if we've full rows
+        val fullRows = IntProgression
+                .fromClosedRange(nRows - 1, 0, -1)
+                .filter{row -> isFullRow(row)}
+        // number of full rows
+        val fullCount = fullRows.count()
+        // clear full rows
+        fullRows.forEach{row -> clearRowsBelow(row)}
+        // play appropriate sound
+        when (fullCount) {
+            1 -> lineRemovedSound.play(false)
+            2 or 3 -> lineRemoved4Sound.play(false)
+            4 -> wonderfulVoice.play(false)
+        }
+        // update score if necessary
+        if (fullCount > 0) {
+           updateScore(fullCount)
         }
     }
 
     private fun newPiece() {
         mXCurr = nColumns / 2 - 1
         mYCurr = nRows - 1 + mFallingPiece.top()
-        mFallingPiece = Tetrominoe.randomPiece(brickWidth(), brickHeight())
+        mFallingPiece = Tetrominoe.randomPiece()
         doneFalling = false
     }
 
     private fun resolvePiece(row: Int, col: Int) = mPieces[(col * nColumns) + row]
 
-    private fun mayAdvance(piece: Tetrominoe, xNew: Int, yNew: Int): Boolean {
-
-        for (i in 0 until 4) {
-            val brick = piece.brickAt(i)
-            val x = xNew + brick.x
-            val y = yNew - brick.y
-
-            if (x < 0 || x >= nColumns || y < 0 || y >= nRows)
-                return false
-            if (resolvePiece(x, y) !is NoShape)
-                return false
-        }
-
+    private fun acceptPiecePos(piece: Tetrominoe, xNew: Int, yNew: Int) {
         mFallingPiece = piece
         mXCurr = xNew
         mYCurr = yNew
         repaint()
-        return true
+    }
+
+    private fun tryPosition(piece: Tetrominoe, xNew: Int, yNew: Int): Boolean {
+
+        val isValidPos = piece.bricks
+                .all { brick ->
+                    val x = xNew + brick.x
+                    val y = yNew - brick.y
+                    (x in 0..(nColumns - 1) && y in 0..(nRows - 1)) && resolvePiece(x, y) is NoShape
+                }
+
+        if (isValidPos) {
+            acceptPiecePos(piece, xNew, yNew)
+        }
+
+        return isValidPos
+
     }
 
     inner class KeyPressHandler : KeyAdapter() {
 
         private fun advanceLeft() {
-            if (mayAdvance(mFallingPiece, mXCurr - 1, mYCurr)) {
+            if (tryPosition(mFallingPiece, mXCurr - 1, mYCurr)) {
                 buttonLRSound.play(false)
             }
         }
 
         private fun advanceRight() {
-            if (mayAdvance(mFallingPiece, mXCurr + 1, mYCurr)) {
+            if (tryPosition(mFallingPiece, mXCurr + 1, mYCurr)) {
                 buttonLRSound.play(false)
             }
         }
 
         private fun rotateRight() {
-            if (mayAdvance(mFallingPiece.rotateRight(), mXCurr, mYCurr)) {
+            if (mFallingPiece is OShape)
+                return
+            if (tryPosition(Tetrominoe.rotateRight(mFallingPiece), mXCurr, mYCurr)) {
                 pieceRotate.play(false)
             } else {
                 pieceRotateFail.play(false)
@@ -224,7 +238,9 @@ class GameCtrl(onScoreChangeListener: OnScoreChangeListener) : JPanel(),
         }
 
         private fun rotateLeft() {
-            if (mayAdvance(mFallingPiece.rotateLeft(), mXCurr, mYCurr)) {
+            if (mFallingPiece is OShape)
+                return
+            if (tryPosition(Tetrominoe.rotateLeft(mFallingPiece), mXCurr, mYCurr)) {
                 pieceRotate.play(false)
             } else {
                 pieceRotateFail.play(false)
@@ -261,6 +277,8 @@ class GameCtrl(onScoreChangeListener: OnScoreChangeListener) : JPanel(),
         }
     }
 
+    inner class PiecePosition(val piece: Tetrominoe, val xPos: Int, val yPos: Int)
+
     interface OnScoreChangeListener {
         fun onScoreChanged(oldScore: Int, currentScore: Int)
     }
@@ -272,6 +290,9 @@ class GameCtrl(onScoreChangeListener: OnScoreChangeListener) : JPanel(),
 
         val panelWidth = 400
         val panelHeight = 700
+
+        val brickWidth = panelWidth / nColumns
+        val brickHeight = panelHeight / nRows
 
         val REPAINT_INTERVAL = 150
 

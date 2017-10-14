@@ -1,12 +1,14 @@
-package com.github.kbngmoses.game.tetominoe
+package com.github.kbngmoses.game.tetrominoe
 
 import java.awt.Color
 import java.awt.Graphics
 
 data class Brick(var x: Int, var y: Int, val width: Int, val height: Int, private val color: Color) {
 
-    fun rotateRight() { val tmp = x; x = -y; y = tmp }
-    fun rotateLeft()  { val tmp = x; x = y; y = -tmp }
+    constructor(brick: Brick): this(brick.x, brick.y, brick.width, brick.height, brick.color)
+
+    fun rotateRight(): Brick { val tmp = x; x = -y; y = tmp; return this }
+    fun rotateLeft(): Brick  { val tmp = x; x = y; y = -tmp; return this }
 
     fun render(g: Graphics, xPos: Int, yPos: Int) {
         g.color = color
